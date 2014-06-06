@@ -1,0 +1,11 @@
+PASS	Basic Statistics	JP1.fastq
+PASS	Per base sequence quality	JP1.fastq
+PASS	Per sequence quality scores	JP1.fastq
+FAIL	Per base sequence content	JP1.fastq
+FAIL	Per base GC content	JP1.fastq
+FAIL	Per sequence GC content	JP1.fastq
+PASS	Per base N content	JP1.fastq
+PASS	Sequence Length Distribution	JP1.fastq
+FAIL	Sequence Duplication Levels	JP1.fastq
+FAIL	Overrepresented sequences	JP1.fastq
+FAIL	Kmer Content	JP1.fastq

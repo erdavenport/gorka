@@ -1,0 +1,157 @@
+###### Processing files for Gorka
+
+##### Demultiplex files:
+# 5/23/14
+# Download files from core to PPS cluster:
+wget --user=jpinto --password='RCq74o4b' -r ftp://osrffiles.uchicago.edu/140424_SN7001329_0389_AH9D56ADXX/
+
+
+
+# 6/2/14
+
+# Need to combine all forward and reverse read files that were split into multiple fastq files:
+# Combine all of the forward and reverse files for JP1:
+zcat JP-1_NoIndex_L001_R1_00* | gzip > JP-1_NoIndex_L001_R1.fastq.gz
+zcat JP-1_NoIndex_L001_R2_00* | gzip > JP-1_NoIndex_L001_R2.fastq.gz
+
+# Unzipped files:
+gunzip JP-1_NoIndex_L001_R1.fastq.gz
+gunzip JP-1_NoIndex_L001_R2.fastq.gz
+
+# Generate barcode files for demultiplexing:
+./create_sample_mapping_files_for_QIIME_060214ERD.R 
+
+# Unzipping files to try the hack:
+# hack from http://biocozy.blogspot.com/2012/10/how-to-demultiplex-fastq-files-with.html
+
+paste -d '' <(echo; sed -n '1,${n;p;}' JP-1_NoIndex_L001_R1.fastq | sed G) JP-1_NoIndex_L001_R2.fastq | sed '/^$/d' | /data/tools/fastx/bin/fastx_barcode_splitter.pl --bol --bcfile /mnt/lustre/home/erdavenport/gorka/rawdata/mapping_files/JP1_barcodes_060214ERD.txt --prefix JP1_ --suffix .fastq
+
+
+
+
+
+# 6/5/14
+
+# Combine all of the forward and reverse files for JP2:
+zcat JP-2_NoIndex_L002_R1_00* | gzip > JP2_NoIndex_L002_R1.fastq.gz
+zcat JP-2_NoIndex_L002_R2_00* | gzip > JP2_NoIndex_L002_R2.fastq.gz
+
+# moved the rc index barcode files to the cluster to see if those make any difference
+# Unzipped files:
+gunzip JP2_NoIndex_L002_R1.fastq.gz
+gunzip JP2_NoIndex_L002_R2.fastq.gz
+
+# demultiplex using hack:
+paste -d '' <(echo; sed -n '1,${n;p;}' JP2_NoIndex_L002_R1.fastq | sed G) JP2_NoIndex_L002_R2.fastq | sed '/^$/d' | /data/tools/fastx/bin/fastx_barcode_splitter.pl --bol --bcfile /mnt/lustre/home/erdavenport/gorka/rawdata/mapping_files/JP2_barcodes_060214ERD.txt --prefix JP2_ --suffix .fastq
+
+
+
+
+
+# 6/6/14
+
+# Need to remove the first 12 bases from each read (barcode sequence) for both JP1 and JP2:
+for i in *.fastq
+do
+echo $i
+/data/tools/fastx/bin/fastx_trimmer -f 13 -Q 33 -i $i -o ~/gorka/data/fastq_files/$i
+done
+
+# Note: JP1_CRS265 and JP1_CRS303 have no reads
+
+
+
+##### FastQC
+
+# Combine all JP1 and JP2 for fastqc:
+cat JP1* > JP1.fastq
+cat JP2* > JP2.fastq
+
+# Run fastqc on each lane:
+/data/tools/FastQC/fastqc JP1.fastq
+/data/tools/FastQC/fastqc JP2.fastq
+
+mv JP1_fastqc* ../summaries/
+mv JP2_fastqc* ../summaries/
+rm JP1.fastq
+rm JP2.fastq
+
+# Looking at fastqc files everything looks normal. There is a dip in quality for the first 13-14 bases in the read, which is expected. 
+
+
+
+##### Determine number of sequences per sample:
+# Count lines of each sample:
+for i in JP*_*
+do
+wc -l $i >> ~/gorka/data/summaries/fastq_lines_for_each_sample_060614ERD.txt
+done
+
+# In R, get reads per sample and plot results:
+./reads_sequenced_per_sample_060614ERD.R
+
+
+##### Quality filter the reads:
+for i in *
+do
+qsub -l h_vmem=2g,bigio=16 /mnt/lustre/home/ornam/16S_rRNA/programs/submit_filter_fastq.sh /mnt/lustre/home/erdavenport/gorka/data/ "--inFastq /mnt/lustre/home/erdavenport/gorka/data/fastq_files/$i --outFastq /mnt/lustre/home/erdavenport/gorka/data/qced_fastq_files/$i --qualityTruncCutoff 0.01 --qualOffset 33 --trimPrefixLen 13 --maxAmbig 0 --minReadLen 75 --trimTo 100"
+done
+
+
+
+##### Determine number of sequences per sample after QC:
+# Count lines of each sample:
+for i in JP*_*
+do
+wc -l $i >> ~/gorka/data/summaries/fastq_lines_for_each_sample_after_QC_060614ERD.txt
+done
+
+# In R, get reads per sample and plot results:
+./reads_sequenced_per_sample_060614ERD.R
+
+
+
+
+
+
+##### Convert to fasta files:
+for i in *
+do
+cat $i | perl -e '$i=0;while(<>){if(/^\@/&&$i==0){s/^\@/\>/;print;}elsif($i==1){print;$i=-3}$i++;}' > ~/gorka/data/fasta_files/$i.fasta 
+echo finished with $i
+done
+
+# rename files
+for i in *.fasta
+do
+mv $i $(echo $i | sed s/.fastq.fasta/.fasta/)
+done
+
+# Count lines of each sample:
+for i in JP*_*
+do
+wc -l $i >> ~/gorka/data/summaries/fasta_lines_for_each_sample_after_QC_060614ERD.txt
+done
+
+
+
+
+
+
+##### Classify sequences using mothur:
+for i in * 
+do
+qsub -l h_vmem=2g,bigio=4  /mnt/lustre/home/ornam/16S_rRNA/programs/submit_mothur_classify_seqs.sh ~/gorka/data/ ~/gorka/data/fasta_files/$i /mnt/lustre/home/erdavenport/Poop/Classify.genus_nr/R1_R2_single100F_rdp_genus_nr.fa /mnt/lustre/home/erdavenport/Poop/Classify.genus_nr/R1_R2_single100F_rdp_genus_nr_rdp_ltp_rearranged_genus_trimmed.tax ~/gorka/data/classification_files/taxonomy_files/
+done
+
+
+
+
+##### Filter by confidence score:
+
+for i in *.taxonomy
+do
+qsub -l h_vmem=6g,bigio=8 /mnt/lustre/home/ornam/16S_rRNA/programs/mothur.filter.by.confidence.all.ranks.sh ~/gorka/data/classification_files/taxonomy_files/ $i ~/gorka/data/classification_files/ci_filtered_taxonomy_files/ "phylum:65,class:80,order:60,family:80,genus:90"
+done
+
+
