@@ -155,3 +155,87 @@ qsub -l h_vmem=6g,bigio=8 /mnt/lustre/home/ornam/16S_rRNA/programs/mothur.filter
 done
 
 
+
+# 6/9/14
+
+##### Get the number of lines for the filtered files:
+for i in *CI.FILTERED.taxonomy
+do
+wc -l $i >> ~/gorka/data/summaries/lines_after_classification_QC_060914ERD.txt
+done
+
+
+
+
+##### Summarize taxonomies
+for i in /mnt/lustre/home/erdavenport/gorka/data/classification_files/ci_filtered_taxonomy_files/*.taxonomy
+do
+qsub -l h_vmem=2g,bigio=4 ~/repos/scripts_repo/poop_scripts/summarize.mothur.filtered.taxonomy.sh $i
+done
+
+
+# Create directories for each level:
+mkdir grepped_phylum
+mkdir grepped_class
+mkdir grepped_order
+mkdir grepped_family
+mkdir grepped_genus
+
+# Grep out each level:
+
+for i in *.tax.summary
+do
+grep '\<phylum_' $i > $i.phylum.grepped
+done
+
+for i in *.tax.summary
+do
+grep '\<order_' $i > $i.order.grepped
+done
+
+for i in *.tax.summary
+do
+grep '\<class_' $i > $i.class.grepped
+done
+
+for i in *.tax.summary
+do
+grep '\<family_' $i > $i.family.grepped
+done
+
+for i in *.tax.summary
+do
+grep '\<genus_' $i > $i.genus.grepped
+done
+
+mv *.genus.grepped grepped_genus
+mv *.family.grepped grepped_family
+mv *.order.grepped grepped_order
+mv *.class.grepped grepped_class
+mv *.phylum.grepped grepped_phylum
+
+
+# Rename files:
+for j in phylum class order family genus
+do
+for i in /mnt/lustre/home/erdavenport/gorka/data/classification_files/ci_filtered_taxonomy_files/grepped_$j/*.grepped
+do
+mv $i $(echo $i | sed s/.R1_R2_single100F_rdp_genus_nr_rdp_ltp_rearranged_genus_trimmed.taxonomy.CI.FILTERED.tax.summary.*.grepped/.tax.summary.$j/)
+done
+echo "done with " $j
+done
+
+
+##### Create data tables. 
+Rscript ~/repos/scripts_repo/poop_scripts/generate.taxa.tables.R phylum ~/gorka/data/summaries/ gorka V4
+Rscript ~/repos/scripts_repo/poop_scripts/generate.taxa.tables.R class ~/gorka/data/summaries/ gorka V4
+Rscript ~/repos/scripts_repo/poop_scripts/generate.taxa.tables.R order ~/gorka/data/summaries/ gorka V4
+Rscript ~/repos/scripts_repo/poop_scripts/generate.taxa.tables.R family ~/gorka/data/summaries/ gorka V4
+Rscript ~/repos/scripts_repo/poop_scripts/generate.taxa.tables.R genus ~/gorka/data/summaries/ gorka V4
+
+
+# Look at the reads sequenced each stage:
+./reads_sequenced_each_stage_060914ERD.R
+
+
+
