@@ -21,7 +21,7 @@ lines <- read.table(file="/Users/erdavenport/clusterhome/gorka/data/summaries/fa
 reads <- lines
 reads$V1 <- reads$V1/4
 
-sorted <- lines[order(reads$V1),]
+sorted <- reads[order(reads$V1),]
 
 colme <- function(x) {
 	if (grepl("MI", x)) {

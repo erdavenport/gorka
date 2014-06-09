@@ -18,8 +18,8 @@ today <- format(today, format="%m%d%y")
 
 
 ##### Load in the reads sequenced, after read QC, and after classification QC per sample:
-seqed <- read.table(file="../results/table.reads.sequenced.per.sample.060614ERD.txt", sep="\t", header=TRUE)
-qced <- read.table(file="../results/table.reads.sequenced.per.sample.after.QC.060614ERD.txt", sep="\t", header=TRUE)
+seqed <- read.table(file="../results/table.reads.sequenced.per.sample.060914ERD.txt", sep="\t", header=TRUE)
+qced <- read.table(file="../results/table.reads.sequenced.per.sample.after.QC.060914ERD.txt", sep="\t", header=TRUE)
 classified <- read.table(file="/Users/erdavenport/clusterhome/gorka/data/summaries/lines_after_classification_QC_060914ERD.txt", sep=" ", header=FALSE)
 
 classified$V2 <- gsub(".R1_R2_single100F_rdp_genus_nr_rdp_ltp_rearranged_genus_trimmed.taxonomy.CI.FILTERED.taxonomy", "", classified$V2)
